@@ -1,0 +1,162 @@
+---
+title: "page_stockprice"
+output: html_notebook
+---
+
+```{r}
+library(Synth)
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(zoo)
+```
+
+
+
+```{r}
+#define function
+#clean exchange date and closing sum
+cleaner <- function(company_xlsx) {
+  clean2 <- select(company_xlsx, ExchangeDate, Close,Volume, Turnover)
+  close_clean <- gsub(" ", "", clean2$Close)
+  exchange_date <- as.Date(clean2$ExchangeDate)
+  final_file <- cbind(clean2, close_clean, exchange_date)
+  final_file <- final_file %>% filter(exchange_date <= "2022-12-31" & exchange_date >= "2019-01-01" )
+  final_file$close_clean <- as.numeric(final_file$close_clean)
+  final_file$ExchangeDate <- NULL
+  final_file$Close <- NULL
+#  monthly rolling mean
+  monthly_rolling_mean <- rollmean(final_file$close_clean, k=6, align = 'left')
+  nrow(monthly_rolling_mean)
+  final_file <- slice(final_file, 1:(n() - 5))   
+# adding a week number variable
+  weeknumber<- rev(seq.int(nrow(final_file)))
+  final_file <- cbind(final_file, monthly_rolling_mean, weeknumber)
+  return(final_file)
+}  
+
+current_dir <- getwd()
+file_dir <- file.path(current_dir, "files/page/page_weekly_q")
+
+# Loop over all files in the directory
+for (filename in dir(file_dir)) {
+  # Skip any files that aren't Excel files
+  if (!endsWith(filename, ".xlsx")) {
+    next
+  }
+
+  # Construct the file path using file.path()
+  file_path <- file.path(file_dir, filename)
+
+  # Extract the filename without the extension
+  df_name <- gsub("\\.xlsx", "", filename)
+
+  # Read the data into a dataframe with a unique name
+  assign(df_name, read_xlsx(file_path))
+
+  # Apply the cleaner function to the dataframe
+  assign(df_name, cleaner(get(df_name)))
+}
+
+rexp_new
+```
+
+
+```{r}
+
+page_new$stockno <- 1
+page_new$unit_ticker <- "page"
+
+arvn_new <- data.frame(append(arvn_new, c(stockno=2)))
+arvn_new <- data.frame(append(arvn_new, c(unit_ticker="arvn")))
+
+nisp_new <- data.frame(append(nisp_new, c(stockno=3)))
+nisp_new <- data.frame(append(nisp_new, c(unit_ticker="nisp")))
+
+trie_new <- data.frame(append(trie_new, c(stockno=4)))
+trie_new <- data.frame(append(trie_new, c(unit_ticker="trie")))
+
+rucl_new <- data.frame(append(rucl_new, c(stockno=5)))
+rucl_new <- data.frame(append(rucl_new, c(unit_ticker="rucl")))
+
+vart_new <- data.frame(append(vart_new, c(stockno=6)))
+vart_new <- data.frame(append(vart_new, c(unit_ticker="vart")))
+
+grwl_new <- data.frame(append(grwl_new, c(stockno=7)))
+grwl_new <- data.frame(append(grwl_new, c(unit_ticker="grwl")))
+
+wlsp_new <- data.frame(append(wlsp_new, c(stockno=8)))
+wlsp_new <- data.frame(append(wlsp_new, c(unit_ticker="wlsp")))
+
+titn_new <- data.frame(append(titn_new, c(stockno=9)))
+titn_new <- data.frame(append(titn_new, c(unit_ticker="titn")))
+
+hmsd_new <- data.frame(append(hmsd_new, c(stockno=10)))
+hmsd_new <- data.frame(append(hmsd_new, c(unit_ticker="hmsd")))
+
+kprm_new <- data.frame(append(kprm_new, c(stockno=11)))
+kprm_new <- data.frame(append(kprm_new, c(unit_ticker="kprm")))
+
+rexp_new <- data.frame(append(rexp_new, c(stockno=12)))
+rexp_new <- data.frame(append(rexp_new, c(unit_ticker="rexp"))) #noe er GALT
+
+nhrs_new <- data.frame(append(nhrs_new, c(stockno=13)))
+nhrs_new <- data.frame(append(nhrs_new, c(unit_ticker="nhrs")))
+
+kkcl_new <- data.frame(append(kkcl_new, c(stockno=14)))
+kkcl_new <- data.frame(append(kkcl_new, c(unit_ticker="kkcl")))
+
+icnt_new <- data.frame(append(icnt_new, c(stockno=15)))
+icnt_new <- data.frame(append(icnt_new, c(unit_ticker="icnt")))
+
+dlla_new <- data.frame(append(dlla_new, c(stockno=16)))
+dlla_new <- data.frame(append(dlla_new, c(unit_ticker="dlla")))
+
+bhex_new <- data.frame(append(bhex_new, c(stockno=17)))
+bhex_new <- data.frame(append(bhex_new, c(unit_ticker="bhex")))
+
+
+```
+
+Treatment: 2020-08-31 - 2019-01-01
+```{r}
+mylist <- list(page_new,arvn_new,nisp_new,trie_new,rucl_new,vart_new,grwl_new,wlsp_new,titn_new,hmsd_new,kprm_new, rexp_new, nhrs_new, kkcl_new, dlla_new, bhex_new, icnt_new)
+
+page_new
+
+page_new[,5] <- page_new[,5]/100
+page_new
+```
+
+```{r}
+
+fool <- rbind(page_new,arvn_new,nisp_new,trie_new,rucl_new,vart_new,grwl_new,wlsp_new,titn_new,hmsd_new,kprm_new, nhrs_new, kkcl_new, dlla_new, bhex_new, icnt_new)
+
+
+#8 skal nok ut
+dataprep.out <- dataprep(
+  foo = fool,
+  predictors = "monthly_rolling_mean",
+  dependent = "monthly_rolling_mean",
+  unit.variable = "stockno",
+  unit.names.variable = "unit_ticker",
+  time.variable = "weeknumber",
+  treatment.identifier = 1,
+  controls.identifier = c(2:11, 13:17),  #2:3,5,6,7,8, 9,10:15
+  time.predictors.prior = c(1:100),
+  time.optimize.ssr = c(1:100),
+  time.plot = c(1:200), #c(250:370, 372:410)
+  )
+
+synth.out<- synth(dataprep.out, genoud=TRUE)
+
+synth.out$solution.w
+
+path.plot(synth.res = synth.out,
+          dataprep.res = dataprep.out,
+          Ylab= c("stock price"),
+          Xlab = c("weeks since 01.01.2015"),
+          Legend= c("PAGE", "synthetic company"),
+          abline(v=300 ))
+```
+
