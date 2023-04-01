@@ -36,7 +36,7 @@ cleaner <- function(company_xlsx) {
 }  
 
 current_dir <- getwd()
-file_dir <- file.path(current_dir, "files/page/page_weekly_q")
+file_dir <- file.path(current_dir, "files/page/page_weekly")
 
 # Loop over all files in the directory
 for (filename in dir(file_dir)) {
