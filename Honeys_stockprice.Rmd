@@ -1,5 +1,5 @@
 ---
-title: "Honeys"
+title: "Honeys_stockprice"
 output: html_notebook
 ---
 
@@ -107,91 +107,5 @@ tokyo$unit_ticker <- "tokyo"
 
 united$stockno <- 16
 united$unit_ticker <- "united"
-
-
-head(honeys)
-head(aoki)
-head(aoyama)
-```
-
-```{r}
-fool <- rbind(honeys, aoki, aoyama, baroque, chiyoda, gfoot, haruyama, konaka, mac, mrk, palemo, righton, sac, tokyo, united, worldco)
-summary(fool)
-```
-
-```{r}
-
-dataprep.out <- dataprep(
-  foo = fool,
-  predictors =c("monthly_rolling_mean","Volume", "Turnover"),
-#  special.predictors = list(list("monthly_rolling_mean", 60:100, "mean")), #new line
-  dependent = "monthly_rolling_mean",
-  unit.variable = "stockno",
-  unit.names.variable = "unit_ticker",
-  time.variable = "weeknumber",
-  treatment.identifier = 1,
-  controls.identifier = c(3,5,13,16), #c(3,5,13,16)
-  time.predictors.prior = 60:123, #start at 60 is 1.1.20, (could do 72 - one year pre divestment) 
-  time.optimize.ssr = 60:123, 
-  time.plot = c(60:176), #200 start of november- 176 about one year post treatment
-  )
-
-reduced_synth.out<- synth(dataprep.out)
-
-reduced_synth.out$solution.w
-
-path.plot(synth.res = reduced_synth.out,
-          dataprep.res = dataprep.out,
-          Ylab= c("stock price"),
-          Xlab = c("weeks since 01.01.2019"),
-          Legend= c("Honeys", "synthetic company"),
-          abline(v=c(99, 123), col=c('blue', 'red'))) #99 decision is given #124 publication date (treatment)
-
-str(reduced_synth.out$solution.v)
-
-```
-
-
-```{r}
-pop <- read.table('/var/folders/jk/rvlsw29169vbxt40vlzstj1r0000gn/T//RtmpkRxs2e/genoud.pro', comment.char = 'G') 
- best <- pop[pop$V1 == 1,, drop = FALSE] 
- very.best <- as.matrix(best[nrow(best), 3:ncol(best)])
-very.best
-
-
-reduced_synth.out$loss.v
-reduced_synth.out$solution.v
-
-str(reduced_synth.out$solution.v)
-
-
-
-dataprep.out <- dataprep(
-  foo = fool,
-  predictors =c("monthly_rolling_mean","Volume"),
-#  special.predictors = list(list("monthly_rolling_mean", 60:100, "mean")), #new line
-  dependent = "monthly_rolling_mean",
-  unit.variable = "stockno",
-  unit.names.variable = "unit_ticker",
-  time.variable = "weeknumber",
-  treatment.identifier = 1,
-  controls.identifier =  c(2:16), 
-  time.predictors.prior = 60:123, #start på 60 er 1.1.20, (evt 72 - er ca et år før divestering) - godt argument for det ettersom vi også unngår covid
-  time.optimize.ssr = 60:123, 
-  time.plot = c(60:176), #200 er start på november 22- kan kutte av før den tid- som ett år etter (176)
-  )
-
-
-synth.out<- synth(dataprep.out, optimxmethod = "All", quadopt = "LowRankQP", custom.v =as.numeric( reduced_synth.out$solution.v ))
-
-synth.out$solution.w
-
-path.plot(synth.res = synth.out,
-          dataprep.res = dataprep.out,
-          Ylab= c("stock price"),
-          Xlab = c("weeks since 01.01.2019"),
-          Legend= c("Honeys", "synthetic company"),
-          abline(v=c(99, 123), col=c('blue', 'red'))) #99 decision is given #124 publication date 
-
 
 ```
