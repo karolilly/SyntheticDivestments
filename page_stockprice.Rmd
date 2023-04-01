@@ -118,7 +118,6 @@ bhex_new <- data.frame(append(bhex_new, c(unit_ticker="bhex")))
 
 ```
 
-Treatment: 2020-08-31 - 2019-01-01
 ```{r}
 mylist <- list(page_new,arvn_new,nisp_new,trie_new,rucl_new,vart_new,grwl_new,wlsp_new,titn_new,hmsd_new,kprm_new, rexp_new, nhrs_new, kkcl_new, dlla_new, bhex_new, icnt_new)
 
@@ -128,35 +127,4 @@ page_new[,5] <- page_new[,5]/100
 page_new
 ```
 
-```{r}
-
-fool <- rbind(page_new,arvn_new,nisp_new,trie_new,rucl_new,vart_new,grwl_new,wlsp_new,titn_new,hmsd_new,kprm_new, nhrs_new, kkcl_new, dlla_new, bhex_new, icnt_new)
-
-
-#8 skal nok ut
-dataprep.out <- dataprep(
-  foo = fool,
-  predictors = "monthly_rolling_mean",
-  dependent = "monthly_rolling_mean",
-  unit.variable = "stockno",
-  unit.names.variable = "unit_ticker",
-  time.variable = "weeknumber",
-  treatment.identifier = 1,
-  controls.identifier = c(2:11, 13:17),  #2:3,5,6,7,8, 9,10:15
-  time.predictors.prior = c(1:100),
-  time.optimize.ssr = c(1:100),
-  time.plot = c(1:200), #c(250:370, 372:410)
-  )
-
-synth.out<- synth(dataprep.out, genoud=TRUE)
-
-synth.out$solution.w
-
-path.plot(synth.res = synth.out,
-          dataprep.res = dataprep.out,
-          Ylab= c("stock price"),
-          Xlab = c("weeks since 01.01.2015"),
-          Legend= c("PAGE", "synthetic company"),
-          abline(v=300 ))
-```
 
