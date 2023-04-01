@@ -1,0 +1,197 @@
+---
+title: "Honeys"
+output: html_notebook
+---
+
+```{r}
+library(Synth)
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(tidyr)
+library(zoo)
+library(readxl)
+```
+
+```{r}
+#define function
+#clean exchange date and closing sum
+cleaner <- function(company_xlsx) {
+  clean2 <- select(company_xlsx, ExchangeDate, Close,Volume, Turnover)
+  close_clean <- gsub(" ", "", clean2$Close)
+  exchange_date <- as.Date(clean2$ExchangeDate)
+  final_file <- cbind(clean2, close_clean, exchange_date)
+  final_file$close_clean <- as.numeric(final_file$close_clean)
+  final_file$ExchangeDate <- NULL
+  final_file$Close <- NULL
+#  monthly rolling mean
+  monthly_rolling_mean <- rollmean(final_file$close_clean, k=6, align = 'left')
+  nrow(monthly_rolling_mean)
+  final_file <- final_file[-c(204, 205,206, 207, 208),] #one less than k
+# adding a week number variable
+  weeknumber<- rev(seq.int(nrow(final_file)))
+  final_file <- cbind(final_file, monthly_rolling_mean, weeknumber)
+  return(final_file)
+}  
+
+current_dir <- getwd()
+file_dir <- file.path(current_dir, "files/honey")
+
+# Loop over all files in the directory
+for (filename in dir(file_dir)) {
+  # Skip any files that aren't Excel files
+  if (!endsWith(filename, ".xlsx")) {
+    next
+  }
+
+  # Construct the file path using file.path()
+  file_path <- file.path(file_dir, filename)
+
+  # Extract the filename without the extension
+  df_name <- gsub("\\.xlsx", "", filename)
+
+  # Read the data into a dataframe with a unique name
+  assign(df_name, read_xlsx(file_path))
+
+  # Apply the cleaner function to the dataframe
+  assign(df_name, cleaner(get(df_name)))
+}
+
+```
+
+```{r}
+honeys$stockno <- 1
+honeys$unit_ticker <- "honeys"
+
+aoki$stockno <- 2
+aoki$unit_ticker <- "aoki"
+
+aoyama$stockno <- 3
+aoyama$unit_ticker <- "aoyama"
+
+baroque$stockno <- 4
+baroque$unit_ticker <- "baroque"
+
+chiyoda$stockno <- 5
+chiyoda$unit_ticker <- "chiyoda"
+
+gfoot$stockno <- 6
+gfoot$unit_ticker <- "gfoot"
+
+haruyama$stockno <- 7
+haruyama$unit_ticker <- "haruyama"
+
+worldco$stockno <- 8
+worldco$unit_ticker <- "worldco"
+
+konaka$stockno <- 9
+konaka$unit_ticker <- "konaka"
+
+mac$stockno <- 10
+mac$unit_ticker <- "mac"
+
+mrk$stockno <- 11
+mrk$unit_ticker <- "mrk"
+
+palemo$stockno <- 12
+palemo$unit_ticker <- "palemo"
+
+righton$stockno <- 13
+righton$unit_ticker <- "righton"
+
+sac$stockno <- 14
+sac$unit_ticker <- "sac"
+
+tokyo$stockno <- 15
+tokyo$unit_ticker <- "tokyo"
+
+united$stockno <- 16
+united$unit_ticker <- "united"
+
+
+head(honeys)
+head(aoki)
+head(aoyama)
+```
+
+```{r}
+fool <- rbind(honeys, aoki, aoyama, baroque, chiyoda, gfoot, haruyama, konaka, mac, mrk, palemo, righton, sac, tokyo, united, worldco)
+summary(fool)
+```
+
+```{r}
+
+dataprep.out <- dataprep(
+  foo = fool,
+  predictors =c("monthly_rolling_mean","Volume", "Turnover"),
+#  special.predictors = list(list("monthly_rolling_mean", 60:100, "mean")), #new line
+  dependent = "monthly_rolling_mean",
+  unit.variable = "stockno",
+  unit.names.variable = "unit_ticker",
+  time.variable = "weeknumber",
+  treatment.identifier = 1,
+  controls.identifier = c(3,5,13,16), #c(3,5,13,16)
+  time.predictors.prior = 60:123, #start at 60 is 1.1.20, (could do 72 - one year pre divestment) 
+  time.optimize.ssr = 60:123, 
+  time.plot = c(60:176), #200 start of november- 176 about one year post treatment
+  )
+
+reduced_synth.out<- synth(dataprep.out)
+
+reduced_synth.out$solution.w
+
+path.plot(synth.res = reduced_synth.out,
+          dataprep.res = dataprep.out,
+          Ylab= c("stock price"),
+          Xlab = c("weeks since 01.01.2019"),
+          Legend= c("Honeys", "synthetic company"),
+          abline(v=c(99, 123), col=c('blue', 'red'))) #99 decision is given #124 publication date (treatment)
+
+str(reduced_synth.out$solution.v)
+
+```
+
+
+```{r}
+pop <- read.table('/var/folders/jk/rvlsw29169vbxt40vlzstj1r0000gn/T//RtmpkRxs2e/genoud.pro', comment.char = 'G') 
+ best <- pop[pop$V1 == 1,, drop = FALSE] 
+ very.best <- as.matrix(best[nrow(best), 3:ncol(best)])
+very.best
+
+
+reduced_synth.out$loss.v
+reduced_synth.out$solution.v
+
+str(reduced_synth.out$solution.v)
+
+
+
+dataprep.out <- dataprep(
+  foo = fool,
+  predictors =c("monthly_rolling_mean","Volume"),
+#  special.predictors = list(list("monthly_rolling_mean", 60:100, "mean")), #new line
+  dependent = "monthly_rolling_mean",
+  unit.variable = "stockno",
+  unit.names.variable = "unit_ticker",
+  time.variable = "weeknumber",
+  treatment.identifier = 1,
+  controls.identifier =  c(2:16), 
+  time.predictors.prior = 60:123, #start på 60 er 1.1.20, (evt 72 - er ca et år før divestering) - godt argument for det ettersom vi også unngår covid
+  time.optimize.ssr = 60:123, 
+  time.plot = c(60:176), #200 er start på november 22- kan kutte av før den tid- som ett år etter (176)
+  )
+
+
+synth.out<- synth(dataprep.out, optimxmethod = "All", quadopt = "LowRankQP", custom.v =as.numeric( reduced_synth.out$solution.v ))
+
+synth.out$solution.w
+
+path.plot(synth.res = synth.out,
+          dataprep.res = dataprep.out,
+          Ylab= c("stock price"),
+          Xlab = c("weeks since 01.01.2019"),
+          Legend= c("Honeys", "synthetic company"),
+          abline(v=c(99, 123), col=c('blue', 'red'))) #99 decision is given #124 publication date 
+
+
+```
