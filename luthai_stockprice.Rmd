@@ -1,0 +1,221 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+
+```{r}
+library(Synth)
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(tidyr)
+library(zoo)
+```
+
+
+
+```{r}
+#define function
+#clean exchange date and closing sum
+cleaner <- function(company_csv) { #clean up in the csv 
+  clean2 <- select(company_csv, Exchange.Date, Close,Volume, Turnover)
+  close_clean <- gsub(" ", "", clean2$Close)
+  exchange_date <- dmy(clean2$Exchange.Date) #date format
+  final_file <- cbind(clean2, close_clean, exchange_date) 
+  final_file$close_clean <- as.numeric(final_file$close_clean)
+  final_file$close_week <- final_file$close_clean
+  final_file$Exchange.Date <- NULL
+  final_file$Close <- NULL
+  return(final_file)
+}  
+
+add_rolling_column <- function(dataframe) { #add a column with rolling 
+  monthly_rolling_mean <- rollmean(dataframe$close_clean, k=6, align = 'left')
+  dataframe <- slice(dataframe, 1:(n() - 5))
+  new_dataframe <- cbind(dataframe, monthly_rolling_mean)
+  return(new_dataframe)
+}
+
+
+#load those data sets
+LUTHAI_csv<- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/LUTHAI.csv", sep = ";") 
+
+luthai <- cleaner(LUTHAI_csv)
+luthai <- data.frame(append(luthai, c(stockno=1))) #add unit number for synth
+luthai <- data.frame(append(luthai, c(unit_ticker="luthai"))) #add unit name for synth 
+luthai$weeknumber <- rev(seq.int(nrow(luthai))) #add weeknumber for numeric date variable  
+#rolling column: 
+luthai <- add_rolling_column(luthai) 
+head(luthai)
+```
+
+
+```{r}
+BAOX_csv<- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/BAOX.csv", sep = ";") 
+baox <- cleaner(BAOX_csv)
+baox <- data.frame(append(baox, c(stockno=2)))
+baox <- data.frame(append(baox, c(unit_ticker="baox")))
+baox$weeknumber <- rev(seq.int(nrow(baox)))
+baox <- add_rolling_column(baox)
+
+
+ANAN_csv <- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/ANAN.csv", sep = ";") 
+anan <- cleaner(ANAN_csv)
+anan <- data.frame(append(anan, c(stockno=3)))
+anan <- data.frame(append(anan, c(unit_ticker="anan")))
+anan$weeknumber <- rev(seq.int(nrow(anan)))
+anan <- add_rolling_column(anan)
+
+
+BROS_csv <- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/BROS.csv", sep = ";")
+bros <- cleaner(BROS_csv)
+bros <- data.frame(append(bros, c(stockno=4)))
+bros <- data.frame(append(bros, c(unit_ticker="bros")))
+bros$weeknumber <- rev(seq.int(nrow(bros)))
+bros <- add_rolling_column(bros)
+
+HLAG_csv<- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/HLAG.csv", sep = ";")
+hlag <- cleaner(HLAG_csv)
+hlag <- data.frame(append(hlag, c(stockno=5)))
+hlag <- data.frame(append(hlag, c(unit_ticker="hlag")))
+hlag$weeknumber <- rev(seq.int(nrow(hlag)))
+hlag <- add_rolling_column(hlag)
+
+HUAF_csv<- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/HUAF.csv", sep = ";")
+huaf <- cleaner(HUAF_csv)
+huaf <- data.frame(append(huaf, c(stockno=6)))
+huaf <- data.frame(append(huaf, c(unit_ticker="huaf")))
+huaf$weeknumber <- rev(seq.int(nrow(huaf)))
+huaf <- add_rolling_column(huaf)
+
+JIHE_csv<- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/JIHE.csv", sep = ";")
+jihe <- cleaner(JIHE_csv)
+jihe <- data.frame(append(jihe, c(stockno=7)))
+jihe <- data.frame(append(jihe, c(unit_ticker="jihe")))
+jihe$weeknumber <- rev(seq.int(nrow(jihe)))
+jihe <- add_rolling_column(jihe)
+
+JIHU_csv<- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/JIHU.csv", sep = ";")
+jihu <- cleaner(JIHU_csv)
+jihu <- data.frame(append(jihu, c(stockno=8)))
+jihu <- data.frame(append(jihu, c(unit_ticker="jihu")))
+jihu$weeknumber <- rev(seq.int(nrow(jihu)))
+jihu <- add_rolling_column(jihu)
+
+
+JILI_csv<- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/JILI.csv", sep = ";")
+jili <- cleaner(JILI_csv)
+jili <- data.frame(append(jili, c(stockno=9)))
+jili <- data.frame(append(jili, c(unit_ticker="jili")))
+jili$weeknumber <- rev(seq.int(nrow(jili)))
+jili <- add_rolling_column(jili)
+
+
+LULI_csv <- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/LULI.csv", sep = ";")
+luli <- cleaner(LULI_csv)
+luli <- data.frame(append(luli, c(stockno=10)))
+luli <- data.frame(append(luli, c(unit_ticker="luli")))
+luli$weeknumber <- rev(seq.int(nrow(luli)))
+luli <- add_rolling_column(luli)
+
+SHCH_csv <- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/SHCH.csv", sep = ";")
+shch <- cleaner(SHCH_csv)
+shch <- data.frame(append(shch, c(stockno=11)))
+shch <- data.frame(append(shch, c(unit_ticker="shch")))
+shch$weeknumber <- rev(seq.int(nrow(shch)))
+shch <- add_rolling_column(shch)
+
+SHFU_csv <- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/SHFU.csv", sep = ";")
+shfu <- cleaner(SHFU_csv)
+shfu <- data.frame(append(shfu, c(stockno=12)))
+shfu <- data.frame(append(shfu, c(unit_ticker="shfu")))
+shfu$weeknumber <- rev(seq.int(nrow(shfu)))
+shfu <- add_rolling_column(shfu)
+
+ZHSE_csv<- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/ZHSE.csv", sep = ";")
+zhse <- cleaner(ZHSE_csv)
+zhse <- data.frame(append(zhse, c(stockno=13)))
+zhse <- data.frame(append(zhse, c(unit_ticker="zhse")))
+zhse$weeknumber <- rev(seq.int(nrow(zhse)))
+zhse <- add_rolling_column(zhse)
+
+ZHTA_csv<- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/ZHTA.csv", sep = ";")
+zhta <- cleaner(ZHTA_csv)
+zhta <- data.frame(append(zhta, c(stockno=14)))
+zhta <- data.frame(append(zhta, c(unit_ticker="zhta")))
+zhta$weeknumber <- rev(seq.int(nrow(zhta)))
+zhta <- add_rolling_column(zhta)
+
+ZHWE_csv<- read.csv("/Users/karolineolsson/Desktop/cappy/files/luthai-csv/ZHWE.csv", sep = ";")
+zhwe <- cleaner(ZHWE_csv)
+zhwe <- data.frame(append(zhwe, c(stockno=15)))
+zhwe <- data.frame(append(zhwe, c(unit_ticker="zhwe")))
+zhwe$weeknumber <- rev(seq.int(nrow(zhwe)))
+zhwe <- add_rolling_column(zhwe)
+
+```
+
+```{r}
+ncol(luthai)
+#må gjøre close_clean ikke NA for de datoene i data settet - helst et gjennomsnitt av forrige dato og neste 
+
+nrow(zhwe)
+nrow(zhta)
+nrow(zhse)
+nrow(shch)#en
+nrow(jili)
+luthai
+```
+
+Treatment: 2020-08-31
+
+```{r}
+
+fool <- rbind(luthai, baox, anan, bros, hlag, huaf, jihe, jihu, jili, luli, shch, shfu, zhse, zhwe,zhta)
+
+summary(fool)
+
+dataprep.out <- dataprep(
+  foo = fool,
+  predictors =c("monthly_rolling_mean","Volume", "Turnover"),
+#  special.predictors = list(list("monthly_rolling_mean", 60:100, "mean")), #new line
+  dependent = "monthly_rolling_mean",
+  unit.variable = "stockno",
+  unit.names.variable = "unit_ticker",
+  time.variable = "weeknumber",
+  treatment.identifier = 1,
+  controls.identifier = c(2:13),
+  time.predictors.prior = 100:182,
+  time.optimize.ssr = 100:182, 
+  time.plot = c(100:280), 
+  )
+
+synth.out<- synth(dataprep.out)
+
+synth.out$solution.w
+
+path.plot(synth.res = synth.out,
+          dataprep.res = dataprep.out,
+          Ylab= c("stock price"),
+          Xlab = c("weeks since 01.01.2015"),
+          Legend= c("Luthai", "synthetic company"),
+          abline(v=c(164,182), col=c('blue', 'red'))) #164 her bestemmer etikkrådet #282 er det offentliggjort 
+
+```
+
+```{r}
+path.plot(synth.res = synth.out,
+          dataprep.res = dataprep.out,
+          Ylab= c("stock price"),
+          Xlab = c("weeks since 01.01.2015"),
+          Legend= c("Luthai", "synthetic company"),
+          abline(v=c(164,182), col=c('blue', 'red'))) #164 her bestemmer etikkrådet #282 er det offentliggjort 
+
+
+```
