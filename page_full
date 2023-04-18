@@ -1,0 +1,507 @@
+```{r}
+library(readxl)
+
+```
+
+```{r}
+
+current_dir <- getwd()
+file_dir <- file.path(current_dir, "/files/page/page_q")
+
+# Loop over all files in the directory
+for (filename in dir(file_dir)) {
+  # Skip any files that aren't Excel files
+  if (!endsWith(filename, ".xlsx")) {
+    next
+  }
+
+  # Construct the file path using file.path()
+  file_path <- file.path(file_dir, filename)
+
+  # Extract the filename without the extension
+  df_name <- gsub("\\.xlsx", "", filename)
+
+  # Read the data into a dataframe with a unique name
+  assign(df_name, read_xlsx(file_path))
+
+  # Apply the cleaner function to the dataframe
+}
+
+```
+
+
+```{r}
+
+
+newfile_all <- list(page_q,arvn_q,nisp_q,trie_q,rucl_q,vart_q,grwl_q,wlsp_q,titn_q,hmsd_q,kprm_q, rexp_q, nhrs_q, kkcl_q, dlla_q, bhex_q, icnt_q)
+
+# Loop over the list of data frames and replace the column names
+newfile_all <- lapply(newfile_all, function(df) {
+  colnames(df) <- as.character(df[14, ])
+  df<- df[-c(2:9,14),] #just to take out some unnecessary rows
+  unique(df)
+  return(df)
+})
+
+newfile_all
+
+```
+```{r}
+
+#  through each data frame
+newfile_all <- lapply(newfile_all, function(df) {
+  # Apply the cleaning process to the 'Field Name' column
+  df$`Field Name` <- gsub("[ -&,():/]+", "_", df$`Field Name`)
+  df$`Field Name` <- gsub("_-_|__+|___+", "_", df$`Field Name`)
+  df$`Field Name` <- gsub("_$", "", df$`Field Name`)
+  # Remove duplicate rows from the data frame
+  df <- unique(df)
+
+  return(df)
+  
+})
+newfile_all
+
+
+#CHECK WHAT ROWNAMES EXIST IN ALL DATAFRAMES
+# Get intersection of row names
+cols <- lapply(newfile_all, function(df) df[,1])
+# Use Reduce with intersect to find the common values across all vectors
+common_values <- Reduce(intersect, cols)
+```
+```{r}
+
+
+page_q_modified <- newfile_all[[1]]
+arvn_q_modified <- newfile_all[[2]]
+nisp_q_modified <- newfile_all[[3]]
+trie_q_modified <- newfile_all[[4]]
+rucl_q_modified <- newfile_all[[5]]
+vart_q_modified <- newfile_all[[6]]
+grwl_q_modified <- newfile_all[[7]]
+wlsp_q_modified <- newfile_all[[8]]
+titn_q_modified <- newfile_all[[9]]
+hmsd_q_modified <- newfile_all[[10]]
+kprm_q_modified <- newfile_all[[11]]
+rexp_q_modified <- newfile_all[[12]]
+nhrs_q_modified <- newfile_all[[13]]
+kkcl_q_modified <- newfile_all[[14]]
+dlla_q_modified <- newfile_all[[15]]
+bhex_q_modified <- newfile_all[[16]]
+icnt_q_modified<- newfile_all[[17]]
+
+pagefile <- semi_join(x = page_q_modified, y = common_values)
+arvnfile <- semi_join(x = arvn_q_modified, y = common_values)
+nispfile <- semi_join(x = nisp_q_modified, y = common_values)
+triefile <- semi_join(x = trie_q_modified, y = common_values)
+ruclfile<- semi_join(x = rucl_q_modified, y = common_values)
+vartfile<- semi_join(x = vart_q_modified, y = common_values)
+grwlfile<- semi_join(x = grwl_q_modified, y = common_values)
+wlspfile<- semi_join(x = wlsp_q_modified, y = common_values)
+titnfile<- semi_join(x = titn_q_modified, y = common_values)
+hmsdfile<- semi_join(x = hmsd_q_modified, y = common_values)
+kprmfile<- semi_join(x = kprm_q_modified, y = common_values)
+rexpfile<- semi_join(x = rexp_q_modified, y = common_values)
+nhrsfile<- semi_join(x = nhrs_q_modified, y = common_values)
+kkclfile<- semi_join(x = kkcl_q_modified, y = common_values)
+dllafile<- semi_join(x = dlla_q_modified, y = common_values)
+bhexfile<- semi_join(x = bhex_q_modified, y = common_values)
+icntfile<- semi_join(x = icnt_q_modified, y = common_values)
+
+```
+
+```{r}
+
+prepare_to_merge <- function(x) {
+  x <- t(x)
+  x <- as.data.frame(x)
+  colnames(x) <- as.character(x[1, ])
+  x <- x[-c(1,18:59),]
+  x$Period_End_Date<- as.Date(as.numeric(x$Period_End_Date), origin= "1899-12-30")
+  return(x)
+}
+pagefile<- prepare_to_merge(pagefile)
+page_all <- sqldf("
+      SELECT *
+      FROM page_new h
+      JOIN pagefile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+page_all<- page_all %>% filter(exchange_date <= "2022-10-28"& exchange_date >= "2019-01-01")
+page_all <- page_all %>% distinct(exchange_date, .keep_all = TRUE)
+page_all
+
+
+arvnfile<-prepare_to_merge(arvnfile) 
+arvn_all <- sqldf("
+      SELECT *
+      FROM arvn_new h
+      JOIN arvnfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+
+arvn_all <- arvn_all %>% filter(exchange_date <= "2022-10-28"& exchange_date >= "2019-01-01")
+arvn_all <- arvn_all %>% distinct(exchange_date, .keep_all = TRUE)
+arvn_all
+
+
+nispfile <- prepare_to_merge(nispfile)
+nisp_all <- sqldf("
+      SELECT *
+      FROM nisp_new h
+      JOIN nispfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+
+nisp_all <- nisp_all %>% filter(exchange_date <= "2022-10-28"& exchange_date >= "2019-01-01")
+nisp_all <- nisp_all %>% distinct(exchange_date, .keep_all = TRUE)
+nisp_all
+
+triefile <- prepare_to_merge(triefile)
+trie_all <- sqldf("
+      SELECT *
+      FROM trie_new h
+      JOIN triefile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+
+trie_all <- trie_all %>% filter(exchange_date <= "2022-10-28"& exchange_date >= "2019-01-01")
+trie_all <- trie_all %>% distinct(exchange_date, .keep_all = TRUE)
+trie_all
+
+ruclfile <- prepare_to_merge(ruclfile)
+rucl_all <- sqldf("
+      SELECT *
+      FROM rucl_new h
+      JOIN ruclfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+
+rucl_all <- rucl_all %>% filter(exchange_date <= "2022-10-28"& exchange_date >= "2019-01-01")
+rucl_all <- rucl_all %>% distinct(exchange_date, .keep_all = TRUE)
+rucl_all
+
+vartfile <- prepare_to_merge(vartfile)
+vart_all <- sqldf("
+      SELECT *
+      FROM vart_new h
+      JOIN vartfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+
+vart_all <- vart_all %>% filter(exchange_date <= "2022-10-28"& exchange_date >= "2019-01-01")
+vart_all <- vart_all %>% distinct(exchange_date, .keep_all = TRUE)
+vart_all
+
+grwlfile <- prepare_to_merge(grwlfile)
+grwl_all <- sqldf("
+      SELECT *
+      FROM grwl_new h
+      JOIN grwlfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+grwl_all<- grwl_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2019-01-01')
+grwl_all <- grwl_all %>% distinct(exchange_date, .keep_all = TRUE)
+grwl_all
+
+wlspfile<- prepare_to_merge(wlspfile)
+wlsp_all <- sqldf("
+      SELECT *
+      FROM wlsp_new h
+      JOIN wlspfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+wlsp_all<- wlsp_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2019-01-01')
+wlsp_all <- wlsp_all %>% distinct(exchange_date, .keep_all = TRUE)
+wlsp_all
+
+titnfile <- prepare_to_merge(titnfile)
+titn_all <- sqldf("
+      SELECT *
+      FROM titn_new h
+      JOIN titnfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+titn_all<- titn_all %>% filter(exchange_date <= "2022-10-28"& exchange_date >= "2019-01-01")
+titn_all <- titn_all %>% distinct(exchange_date, .keep_all = TRUE)
+titn_all
+
+
+hmsdfile <- prepare_to_merge(hmsdfile)
+hmsd_all <- sqldf("
+      SELECT *
+      FROM hmsd_new h
+      JOIN hmsdfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+hmsd_all<- hmsd_all %>% filter(exchange_date <= "2022-10-28"& exchange_date >= "2019-01-01")
+hmsd_all <- hmsd_all %>% distinct(exchange_date, .keep_all = TRUE)
+hmsd_all
+
+kprmfile <- prepare_to_merge(kprmfile)
+kprm_all <- sqldf("
+      SELECT *
+      FROM kprm_new h
+      JOIN kprmfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+kprm_all<- kprm_all %>% filter(exchange_date <= "2022-10-28"& exchange_date >= "2019-01-01")
+kprm_all <- kprm_all %>% distinct(exchange_date, .keep_all = TRUE)
+kprm_all
+
+
+rexpfile <- prepare_to_merge(rexpfile)#kaos
+rexp_all <- sqldf("
+      SELECT *
+      FROM rexp_new h
+      JOIN rexpfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+rexp_all<- rexp_all %>% filter(exchange_date <= "2022-10-28"& exchange_date >= "2019-01-01")
+rexp_all <- rexp_all %>% distinct(exchange_date, .keep_all = TRUE)
+rexp_all
+
+nhrsfile <- prepare_to_merge(nhrsfile)
+nhrs_all <- sqldf("
+      SELECT *
+      FROM nhrs_new h
+      JOIN nhrsfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+nhrs_all<- nhrs_all %>% filter(exchange_date <= "2022-10-28"& exchange_date >= "2019-01-01")
+nhrs_all <- nhrs_all %>% distinct(exchange_date, .keep_all = TRUE)
+nhrs_all
+
+kkclfile <- prepare_to_merge(kkclfile)
+kkcl_all <- sqldf("
+      SELECT *
+      FROM kkcl_new h
+      JOIN kkclfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+kkcl_all<- kkcl_all %>% filter(exchange_date <= "2022-10-28"& exchange_date >= "2019-01-01")
+kkcl_all <- kkcl_all %>% distinct(exchange_date, .keep_all = TRUE)
+kkcl_all
+
+dllafile <- prepare_to_merge(dllafile)
+dlla_all <- sqldf("
+      SELECT *
+      FROM dlla_new h
+      JOIN dllafile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+dlla_all<- dlla_all %>% filter(exchange_date <= "2022-10-28"& exchange_date >= "2019-01-01")
+dlla_all <- dlla_all %>% distinct(exchange_date, .keep_all = TRUE)
+dlla_all
+
+bhexfile <- prepare_to_merge(bhexfile)
+bhex_all <- sqldf("
+      SELECT *
+      FROM bhex_new h
+      JOIN bhexfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+bhex_all <- bhex_all %>% filter(exchange_date <= "2022-10-28" & exchange_date >= "2019-01-01")
+bhex_all <- bhex_all %>% distinct(exchange_date, .keep_all = TRUE)
+bhex_all
+
+icntfile <- prepare_to_merge(icntfile)
+icnt_all <- sqldf("
+      SELECT *
+      FROM icnt_new h
+      JOIN icntfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+icnt_all <- icnt_all %>% filter(exchange_date <= "2022-10-28" & exchange_date >= "2019-01-01")
+icnt_all <- icnt_all %>% distinct(exchange_date, .keep_all = TRUE)
+icnt_all
+```
+
+```{r}
+page_fooo <- rbind(page_all, arvn_all, nisp_all, trie_all, rucl_all, vart_all, grwl_all, wlsp_all, titn_all, hmsd_all, kprm_all, rexp_all, nhrs_all, kkcl_all, dlla_all, bhex_all, icnt_all)
+
+```
+
+
+```{r}
+page_fooo <- page_fooo %>% mutate_at(c( 'Revenue_from_Business_Activities_Total', 'Earnings_before_Interest_Taxes_Depreciation_Amortization_EBITDA', 'EPS_Diluted_excluding_Extraordinary_Items_Applicable_to_Common_Total', 'Total_Assets', 'Dividend_Yield_Common_Stock_Net_Issue_Specific_TTM',
+'Market_Capitalization', 'Enterprise_Value', 'Net_Margin', 'Gross_Profit_Margin', 'Inventory_Turnover_TTM', 'Working_Capital_to_Total_Assets', 'Accounts_Receivable_Turnover_TTM',  'Average_Payables_Payment_Days_TTM',  'Quick_Ratio', 'Common_Shares_Outstanding_Total', 'Asset_Turnover_TTM', 'Pretax_ROA_TTM', 'Pretax_ROE_TTM'), as.numeric)
+
+#1763 mye nasInventory_Turnover_TTM, Average_Payables_Payment_Days_TTM, Accounts_Receivable_Turnover_TTM, Payables_Turnover_TTM
+
+```
+
+```{r}
+
+p_dataprep.out <- dataprep(
+  foo = page_fooo,
+  predictors =c('Volume','Revenue_from_Business_Activities_Total', 'EPS_Diluted_excluding_Extraordinary_Items_Applicable_to_Common_Total', 'Total_Assets', 'Dividend_Yield_Common_Stock_Net_Issue_Specific_TTM',
+'Market_Capitalization', 'Enterprise_Value', 'Net_Margin', 'Gross_Profit_Margin', 'Inventory_Turnover_TTM', 'Working_Capital_to_Total_Assets', 'Accounts_Receivable_Turnover_TTM',  'Average_Payables_Payment_Days_TTM', 'Quick_Ratio', 'Asset_Turnover_TTM', 'Pretax_ROA_TTM', 'Pretax_ROE_TTM'),
+
+  special.predictors = list(list("monthly_rolling_mean", 20:83, "mean")), 
+  dependent = "monthly_rolling_mean",
+  unit.variable = "stockno",
+  unit.names.variable = "unit_ticker",
+  time.variable = "weeknumber",
+  treatment.identifier = 1,
+  controls.identifier = c(2:16),  #utelater bhex
+  time.predictors.prior = 20:83, #83 divestment is publicized (test fit på 20, 30= 61)
+  time.optimize.ssr = 20:83, 
+  time.plot = c(20:190), #136 post ett år
+  )
+
+p_synth.out<- synth(p_dataprep.out, optimxmethod = "All")
+
+
+```
+
+
+```{r}
+p_synth_data_out = p_dataprep.out$Y0plot%*%p_synth.out$solution.w
+p_base = p_dataprep.out$Y1plot
+p_date = 20:190
+pp<- data.frame(p_synth_data_out,p_base,p_date)
+plot(x=p_date ,p_synth_data_out,type="l",col="black",lty ="dotted", ylab= c("Stock price"), xlab = c("Date"), xaxt='n')
+lines(x=p_date, p_base,col="black")
+abline(v=c(55,83), col=c("blue","red"))
+legend("topleft",legend=c("Synthetic company", "Page", "Ethic recommendation", "Divestment publication"), lty=c("dotted","solid", "solid", "solid"), col= c("black", "black", "blue", "red"), ncol=1)
+axis(side = 1, at = c(20, 50, 80, 110, 140, 170), labels = c("21.06.19", "17.01.20","14.08.20", "12.03.21", "08.10.21","06.05.22"),)
+
+##original path plot
+path.plot(synth.res = p_synth.out,
+          dataprep.res = p_dataprep.out,
+          Ylab= c("stock price"),
+          Xlab = c("date"),
+          Legend= c("Page", "Synthetic company"),
+          abline(v=c(55, 83), col=c("blue", "red")))
+
+str(p_synth.out$solution.v)
+
+
+gaps.plot(synth.res = p_synth.out,
+          dataprep.res = p_dataprep.out,
+          Ylab= c("stock price"),
+          Xlab = c("weeks since 8th of February 2019"),#19 feb 2020 foreslått 31.aug.2020 publisert. 
+          abline(v=c(55, 83), col=c("blue", "red")),
+          Main = NA)
+
+synth.tables <- synth.tab(
+  dataprep.res = p_dataprep.out,
+  synth.res = p_synth.out
+); synth.tables
+
+```
+```{r}
+#sensitivity test excluding KPR Mill 
+
+p_dataprep.out2 <- dataprep(
+  foo = page_fooo,
+  predictors =c('Volume','Revenue_from_Business_Activities_Total', 'EPS_Diluted_excluding_Extraordinary_Items_Applicable_to_Common_Total', 'Total_Assets', 'Dividend_Yield_Common_Stock_Net_Issue_Specific_TTM',
+'Market_Capitalization', 'Enterprise_Value', 'Net_Margin', 'Gross_Profit_Margin', 'Inventory_Turnover_TTM', 'Working_Capital_to_Total_Assets', 'Accounts_Receivable_Turnover_TTM',  'Average_Payables_Payment_Days_TTM', 'Quick_Ratio', 'Asset_Turnover_TTM', 'Pretax_ROA_TTM', 'Pretax_ROE_TTM'),
+
+  special.predictors = list(list("monthly_rolling_mean", 20:83, "mean")), 
+  dependent = "monthly_rolling_mean",
+  unit.variable = "stockno",
+  unit.names.variable = "unit_ticker",
+  time.variable = "weeknumber",
+  treatment.identifier = 1,
+  controls.identifier = c(2:10, 12:16),  #KPR is 11
+  time.predictors.prior = 20:83, #83 divestment is publicized (test fit på 20, 30= 61)
+  time.optimize.ssr = 20:83, 
+  time.plot = c(20:190), #136 post ett år
+  )
+
+p_synth.out2<- synth(p_dataprep.out2, optimxmethod = "All")
+p_synth.out2$solution.w
+
+
+```
+
+
+```{r}
+
+p_synth_data_out2 = p_dataprep.out2$Y0plot%*%p_synth.out2$solution.w
+p_base = p_dataprep.out2$Y1plot
+p_date = 20:190
+pp<- data.frame(p_synth_data_out2,y_base,x_date)
+plot(x=p_date ,p_synth_data_out2,type="l",col="black",lty ="dotted", ylab= c("Stock price"), xlab = c("Date"), xaxt='n')
+lines(x=p_date, y_base,col="black")
+abline(v=c(55,83), col=c("blue","red"))
+legend("topleft",legend=c("Synthetic company", "Page", "Ethic recommendation", "Divestment publication"), lty=c("dotted","solid", "solid", "solid"), col= c("black", "black", "blue", "red"), ncol=1)
+axis(side = 1, at = c(20, 50, 80, 110, 140, 170), labels = c("21.06.19", "17.01.20","14.08.20", "12.03.21", "08.10.21","06.05.22"),)
+
+path.plot(synth.res = p_synth.out2,
+          dataprep.res = p_dataprep.out2,
+          Ylab= c("stock price"),
+          Xlab = c("weeks since 01.01.2019"),
+          Legend= c("Page", "Synthetic company"),
+          abline(v=c(55, 83), col=c("blue", "red"))) #99 decision is given #124 publication date (treatment)
+
+str(p_synth.out2$solution.v)
+
+gaps.plot(synth.res = p_synth.out2,
+          dataprep.res = p_dataprep.out2,
+          Ylab= c("stock price"),
+          Xlab = c("weeks since 01.01.2019"),#19 feb 2020 foreslått 31.aug.2020 publisert. 
+          abline(v=c(55, 83), col=c("blue", "red")),
+          Main = NA)
+
+synth.tables2 <- synth.tab(
+  dataprep.res = p_dataprep.out2,
+  synth.res = p_synth.out2
+); synth.tables2
+
+```
+
+
+```{r} 
+#Placebo in time
+p_dataprep.out1 <- dataprep(
+  foo = page_fooo,
+  predictors =c('Volume','Revenue_from_Business_Activities_Total', 'EPS_Diluted_excluding_Extraordinary_Items_Applicable_to_Common_Total', 'Total_Assets', 'Dividend_Yield_Common_Stock_Net_Issue_Specific_TTM',
+'Market_Capitalization', 'Enterprise_Value', 'Net_Margin', 'Gross_Profit_Margin', 'Working_Capital_to_Total_Assets', 'Quick_Ratio', 'Common_Shares_Outstanding_Total'),
+
+  special.predictors = list(list("monthly_rolling_mean", 20:60, "mean")), 
+  dependent = "monthly_rolling_mean",
+  unit.variable = "stockno",
+  unit.names.variable = "unit_ticker",
+  time.variable = "weeknumber",
+  treatment.identifier = 1,
+  controls.identifier = c(2:16), 
+  time.predictors.prior = 20:60, #we see if a placebo treatment at week 60 would have had the same effect
+  time.optimize.ssr = 20:60, 
+  time.plot = c(20:190), 
+  )
+
+
+p_synth.out1<- synth(p_dataprep.out1, optimxmethod = "All")
+
+p_synth.out1$solution.w
+
+p_synth_data_out1 = p_dataprep.out1$Y0plot%*%p_synth.out1$solution.w
+p_base = p_dataprep.out1$Y1plot
+p_date = 20:190
+pp<- data.frame(p_synth_data_out1,y_base,x_date)
+plot(x=p_date ,p_synth_data_out1,type="l",col="black",lty ="dotted", ylab= c("Stock price"), xlab = c("Date"), xaxt='n')
+lines(x=p_date, y_base,col="black")
+abline(v=c(60,83), col=c("green","red"))
+legend("topleft",legend=c("Synthetic company", "Page", "Placebo divestment publication", "Actual divestment publication"), lty=c("dotted","solid", "solid", "solid"), col= c("black", "black", "green", "red"), ncol=1)
+axis(side = 1, at = c(20, 50, 80, 110, 140, 170), labels = c("21.06.19", "17.01.20","14.08.20", "12.03.21", "08.10.21","06.05.22"),)
+
+str(p_synth.out1$solution.v)
+
+gaps.plot(synth.res = p_synth.out1,
+          dataprep.res = p_dataprep.out1,
+          Ylab= c("Stock price"),
+          Xlab = c("Weeks since 8th of February 2019"), 
+          abline(v=c(60, 80), col=c("blue", "red"), lty=c("dotted","solid"),
+          Main = NA))
+
+
+#### Table 2
+synth.tables <- synth.tab(
+  dataprep.res = p_dataprep.out1,
+  synth.res = p_synth.out1
+); synth.tables
+
+```
