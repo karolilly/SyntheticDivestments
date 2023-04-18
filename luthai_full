@@ -1,0 +1,413 @@
+```{r}
+current_dir <- getwd()
+file_dir <- file.path(current_dir, "/files/luthai/luthai-q") 
+
+# Loop over all files in the directory
+for (filename in dir(file_dir)) {
+  # Skip any files that aren't Excel files
+  if (!endsWith(filename, ".xlsx")) {
+    next
+  }
+
+  # Construct the file path using file.path()
+  file_path <- file.path(file_dir, filename)
+
+  # Extract the filename without the extension
+  df_name <- gsub("\\.xlsx", "", filename)
+
+  # Read the data into a dataframe with a unique name
+  assign(df_name, read_xlsx(file_path))
+}
+
+```
+
+```{r}
+
+
+newfile_all <- list(LUTHAI_q,ANAN_q ,BAOX_q,BROS_q, HLAG_q, HUAF_q, JIHU_q, JILI_q, JSUN_q, LULI_q, NING_q, SHCH_q, SHFU_q, ZHSE_q, ZHWE_q, ZHTA_q)
+
+# Loop over the list of data frames and replace the column names
+newfile_all <- lapply(newfile_all, function(df) {
+  colnames(df) <- as.character(df[14, ])
+  df<- df[-c(2:9,14),] #just to take out some unnecessary rows
+  unique(df)
+  return(df)
+})
+
+```
+
+```{r}
+
+#  through each data frame
+newfile_all <- lapply(newfile_all, function(df) {
+  # Apply the cleaning process to the 'Field Name' column
+  df$`Field Name` <- gsub("[ -&,():/]+", "_", df$`Field Name`)
+  df$`Field Name` <- gsub("_-_|__+|___+", "_", df$`Field Name`)
+  df$`Field Name` <- gsub("_$", "", df$`Field Name`)
+  # Remove duplicate rows from the data frame
+  df <- unique(df)
+
+  return(df)
+  
+})
+newfile_all
+
+
+#CHECK WHAT ROWNAMES EXIST IN ALL DATAFRAMES
+# Get intersection of row names
+cols <- lapply(newfile_all, function(df) df[,1])
+# Use Reduce with intersect to find the common values across all vectors
+common_values <- Reduce(intersect, cols)
+```
+
+```{r}
+luthai_q_modified <- newfile_all[[1]]
+anan_q_modified <- newfile_all[[2]]
+baox_q_modified <- newfile_all[[3]]
+bros_q_modified <- newfile_all[[4]]
+hlag_q_modified <- newfile_all[[5]]
+huaf_q_modified <- newfile_all[[6]]
+jihu_q_modified <- newfile_all[[7]]
+jili_q_modified <- newfile_all[[8]]
+jsun_q_modified <- newfile_all[[9]]
+luli_q_modified <- newfile_all[[10]]
+ning_q_modified <- newfile_all[[11]]
+shch_q_modified <- newfile_all[[12]]
+shfu_q_modified <- newfile_all[[13]]
+zhse_q_modified <- newfile_all[[14]]
+zhwe_q_modified <- newfile_all[[15]]
+zhta_q_modified <- newfile_all[[16]]
+
+
+luthaifile <- semi_join(x = luthai_q_modified, y = common_values)
+ananfile <- semi_join(x = anan_q_modified, y = common_values)
+baoxfile <- semi_join(x = baox_q_modified, y = common_values)
+brosfile <- semi_join(x = bros_q_modified, y = common_values)
+hlagfile<- semi_join(x = hlag_q_modified, y = common_values)
+huaffile<- semi_join(x = huaf_q_modified, y = common_values)
+jihufile<- semi_join(x = jihu_q_modified, y = common_values)
+jilifile<- semi_join(x = jili_q_modified, y = common_values)
+jsunfile<- semi_join(x = jsun_q_modified, y = common_values)
+lulifile<- semi_join(x = luli_q_modified, y = common_values)
+ningfile<- semi_join(x = ning_q_modified, y = common_values)
+shchfile<- semi_join(x = shch_q_modified, y = common_values)
+shfufile<- semi_join(x = shfu_q_modified, y = common_values)
+zhsefile<- semi_join(x = zhse_q_modified, y = common_values)
+zhwefile<- semi_join(x = zhwe_q_modified, y = common_values)
+zhtafile<- semi_join(x = zhta_q_modified, y = common_values)
+```
+
+```{r}
+prepare_to_merge <- function(x) {
+  x <- t(x)
+  x <- as.data.frame(x)
+  colnames(x) <- as.character(x[1, ])
+#  x <- x[-c(1,18:59),]
+  x$Period_End_Date<- as.Date(as.numeric(x$Period_End_Date), origin= "1899-12-30")
+  return(x)
+}
+
+luthaifile <- prepare_to_merge(luthaifile)
+luthai_all <- sqldf("
+      SELECT *
+      FROM luthai h
+      JOIN luthaifile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+luthai_all <- luthai_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2016-01-01')
+luthai_all <- luthai_all %>% distinct(exchange_date, .keep_all = TRUE)
+luthai_all
+
+
+
+ananfile <- prepare_to_merge(ananfile)
+anan_all <- sqldf("
+      SELECT *
+      FROM anan h
+      JOIN ananfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+anan_all <- anan_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2016-01-01')
+anan_all <- anan_all %>% distinct(exchange_date, .keep_all = TRUE)
+anan_all
+
+
+baoxfile <- prepare_to_merge(baoxfile)
+
+baox_all <- sqldf("
+      SELECT *
+      FROM baox h
+      JOIN baoxfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+baox_all <- baox_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2016-01-01')
+baox_all <- baox_all %>% distinct(exchange_date, .keep_all = TRUE)
+baox_all
+
+brosfile <- prepare_to_merge(brosfile)
+bros_all <- sqldf("
+      SELECT *
+      FROM bros h
+      JOIN brosfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+bros_all <- bros_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2016-01-01')
+bros_all <- bros_all %>% distinct(exchange_date, .keep_all = TRUE)
+bros_all
+
+hlagfile <- prepare_to_merge(hlagfile)
+hlag_all <- sqldf("
+      SELECT *
+      FROM hlag h
+      JOIN hlagfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+hlag_all <- hlag_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >='2016-01-01')
+hlag_all <- hlag_all %>% distinct(exchange_date, .keep_all = TRUE)
+hlag_all
+
+huaffile <- prepare_to_merge(huaffile)
+huaf_all <- sqldf("
+      SELECT *
+      FROM huaf h
+      JOIN huaffile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+huaf_all <- huaf_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2016-01-01')
+huaf_all <- huaf_all %>% distinct(exchange_date, .keep_all = TRUE)
+huaf_all
+
+jihufile <- prepare_to_merge(jihufile)
+jihu_all <- sqldf("
+      SELECT *
+      FROM jihu h
+      JOIN jihufile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+jihu_all <- jihu_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2016-01-01')
+jihu_all <- jihu_all %>% distinct(exchange_date, .keep_all = TRUE)
+jihu_all
+
+jilifile <- prepare_to_merge(jilifile)
+
+jili_all <- sqldf("
+      SELECT *
+      FROM jili h
+      JOIN jilifile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+jili_all <- jili_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2016-01-01')
+jili_all <- jili_all %>% distinct(exchange_date, .keep_all = TRUE)
+jili_all
+
+lulifile <- prepare_to_merge(lulifile)
+luli_all <- sqldf("
+      SELECT *
+      FROM luli h
+      JOIN lulifile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+luli_all <- luli_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2016-01-01')
+luli_all <- luli_all %>% distinct(exchange_date, .keep_all = TRUE)
+luli_all
+
+shchfile <- prepare_to_merge(shchfile)
+shch_all <- sqldf("
+      SELECT *
+      FROM shch h
+      JOIN shchfile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+shch_all <- shch_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2016-01-01')
+shch_all <- shch_all %>% distinct(exchange_date, .keep_all = TRUE)
+shch_all
+
+shfufile <- prepare_to_merge(shfufile)
+shfu_all <- sqldf("
+      SELECT *
+      FROM shfu h
+      JOIN shfufile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+shfu_all <- shfu_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2016-01-01')
+shfu_all <- shfu_all %>% distinct(exchange_date, .keep_all = TRUE)
+shfu_all
+
+zhsefile <- prepare_to_merge(zhsefile)
+zhse_all <- sqldf("
+      SELECT *
+      FROM zhse h
+      JOIN zhsefile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+zhse_all <- zhse_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2016-01-01')
+zhse_all <- zhse_all %>% distinct(exchange_date, .keep_all = TRUE)
+zhse_all
+
+zhtafile<- prepare_to_merge(zhtafile)
+zhta_all<- sqldf("
+      SELECT *
+      FROM zhta h
+      JOIN zhtafile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+zhta_all <- zhta_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2016-01-01')
+zhta_all <- zhta_all %>% distinct(exchange_date, .keep_all = TRUE)
+zhta_all
+
+zhwefile<- prepare_to_merge(zhwefile)
+zhwe_all<- sqldf("
+      SELECT *
+      FROM zhwe h
+      JOIN zhwefile hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+zhwe_all <- zhwe_all %>% filter(exchange_date <= '2022-10-28' & exchange_date >= '2016-01-01')
+zhwe_all <- zhwe_all %>% distinct(exchange_date, .keep_all = TRUE)
+zhwe_all
+
+
+```
+
+```{r}
+luthai_fooo <- rbind(luthai_all, anan_all, baox_all, bros_all, hlag_all, huaf_all, jihu_all, jili_all, luli_all, shch_all, shfu_all, zhse_all, zhwe_all, zhta_all)
+
+luthai_fooo
+```
+
+```{r}
+luthai_fooo <- luthai_fooo %>% mutate_at(c('Volume','Revenue_from_Business_Activities_Total', 
+                             'Earnings_before_Interest_Taxes_Depreciation_Amortization_EBITDA',
+                             'Net_Margin',
+                             'EPS_Diluted_excluding_Extraordinary_Items_Applicable_to_Common_Total', 
+                             "Working_Capital_to_Total_Assets",
+                             "Market_Capitalization",
+                             "Gross_Profit_Industrials_Property_Total",
+                             "Dividend_Yield_Common_Stock_Net_Issue_Specific_TTM",
+                             "Income_before_Tax_Margin_TTM",
+                             "Average_Inventory_Days_TTM",
+                             "Gross_Profit_Margin",
+                             "Operating_Margin",  
+                             "EBITDA_Margin",
+                             "Inventory_Turnover_TTM",
+                             "Average_Payables_Payment_Days_TTM", 
+                             "Accounts_Receivable_Turnover_TTM",
+                             "Payables_Turnover_TTM", 
+                             "Total_Assets",
+                             "Common_Shares_Outstanding_Total",
+                             "Dupont_Earning_Power",
+                             "Asset_Turnover_TTM",
+                             "Pretax_ROA_TTM",
+                             "Enterprise_Value",
+                             'Quick_Ratio', 'Pretax_ROE_TTM', 'Return_on_Invested_Capital_TTM'
+                             ), as.numeric) 
+
+summary(luthai_fooo$Inventory_Turnover_TTM)
+#Gross_Profit_Margin EBITDA_Margin Operating_Margin  
+summary(luthai_fooo$Average_Payables_Payment_Days_TTM)
+summary(luthai_fooo$Accounts_Receivable_Turnover_TTM)
+summary(luthai_fooo$Payables_Turnover_TTM)
+```
+
+```{r}
+
+l_dataprep.out <- dataprep(
+  foo = luthai_fooo,
+  predictors =c('EPS_Diluted_excluding_Extraordinary_Items_Applicable_to_Common_Total', 'Net_Margin', 'Gross_Profit_Margin', 'Inventory_Turnover_TTM', 'Working_Capital_to_Total_Assets', 'Accounts_Receivable_Turnover_TTM',  'Average_Payables_Payment_Days_TTM', 'Pretax_ROA_TTM', 'Return_on_Invested_Capital_TTM',
+                'Revenue_from_Business_Activities_Total','Market_Capitalization',  'Earnings_before_Interest_Taxes_Depreciation_Amortization_EBITDA', 'Quick_Ratio', 'Dividend_Yield_Common_Stock_Net_Issue_Specific_TTM', 'Total_Assets','Enterprise_Value'),# hvis man putter inn Pretax_ROE_TTM  går mspe opp 'Asset_Turnover_TTM', 
+  special.predictors = list(list("monthly_rolling_mean", 120:182, "mean")), #new line
+  dependent = "monthly_rolling_mean",
+  unit.variable = "stockno",
+  unit.names.variable = "unit_ticker",
+  time.variable = "weeknumber",
+  treatment.identifier = 1,
+  controls.identifier = c(2:6,8:13,15),
+  time.predictors.prior = 120:182, #a year +10weeks
+  time.optimize.ssr = 120:182, 
+  time.plot = c(120:390), 
+  )
+
+l_synth.out<- synth(l_dataprep.out)
+
+```
+
+
+
+```{r}
+
+l_synth_data_out = l_dataprep.out$Y0plot%*%l_synth.out$solution.w
+l_base = l_dataprep.out$Y1plot
+l_date = 120:390
+
+#hh<- data.frame(l_synth_data_out,l_base,l_date)
+plot(x=l_date , l_synth_data_out,type="l",col="black",lty ="dotted", ylab= c("Stock price"), xlab = c("Date"), xaxt='n', ylim=c(3,20)) #, xlim=c(62,171)
+lines(x=l_date, l_base,col="black")
+abline(v=c(164, 182), col=c("blue","red"))
+legend("topright",legend=c("Synthetic company", "Lu Thai", "Ethic recommendation", "Divestment publication"), lty=c("dotted","solid", "solid", "solid"), col= c("black", "black", "blue", "red"), ncol=1)
+axis(side = 1, at = c(130, 180, 230 , 280, 330, 380), labels = c("07.07.17", "29.06.18","28.06.19","19.06.20", "26.03.21", "27.05.22"),)
+
+
+
+#solution to extract
+l_synth.out$solution.w
+#original path plot
+path.plot(synth.res = l_synth.out,
+          dataprep.res = l_dataprep.out,
+          Ylab= c("stock price"),
+          Xlab = c("weeks "),
+          Legend= c("Luthai", "Synthetic company"),
+          abline(v=c(164, 182), col=c("blue", "red"), text(c("day", "off")))) #164 decision is given #282 publication date (treatment)
+          #text("day ethical recommendation", x = v1, srt = -90, pos = 4)) # near top
+
+str(l_synth.out$solution.v)
+glimpse(l_synth.out)
+gaps.plot(synth.res = l_synth.out,
+          dataprep.res = l_dataprep.out,
+          Ylab= c("stock price"),
+          Xlab = c("Weeks since the 1st of January 2015"),
+          abline(v=c(164, 182), col=c("blue", "red")),
+          Main = NA)
+
+synth.tables <- synth.tab(
+  dataprep.res = l_dataprep.out,
+  synth.res = l_synth.out
+); synth.tables
+
+```
+
+
+```{r}
+#PLACEBO IN TIME
+l_dataprep.out1 <- dataprep(
+  foo = luthai_fooo,
+  predictors =c('EPS_Diluted_excluding_Extraordinary_Items_Applicable_to_Common_Total', 'Net_Margin', 'Gross_Profit_Margin', 'Inventory_Turnover_TTM', 'Working_Capital_to_Total_Assets', 'Accounts_Receivable_Turnover_TTM',  'Average_Payables_Payment_Days_TTM', 'Pretax_ROA_TTM', 'Return_on_Invested_Capital_TTM',
+                'Revenue_from_Business_Activities_Total','Market_Capitalization',  'Earnings_before_Interest_Taxes_Depreciation_Amortization_EBITDA', 'Quick_Ratio', 'Dividend_Yield_Common_Stock_Net_Issue_Specific_TTM', 'Total_Assets','Enterprise_Value'),# hvis man putter inn Pretax_ROE_TTM  går mspe opp  
+  special.predictors = list(list("monthly_rolling_mean", 120:182, "mean")), #new line
+  dependent = "monthly_rolling_mean",
+  unit.variable = "stockno",
+  unit.names.variable = "unit_ticker",
+  time.variable = "weeknumber",
+  treatment.identifier = 1,
+  controls.identifier = c(2:6,8:13,15),
+  time.predictors.prior = 120:160, #160 = 20 weeks before approx
+  time.optimize.ssr = 120:160, 
+  time.plot = c(120:390), 
+  )
+
+l_synth.out<- synth(l_dataprep.out1)
+l_synth.out1<- synth(l_dataprep.out1, optimxmethod = 'All')
+
+
+l_synth_data_out1 = l_dataprep.out1$Y0plot%*%l_synth.out1$solution.w
+l_base1 = l_dataprep.out1$Y1plot
+l_date1 = 120:390
+
+#hh<- data.frame(l_synth_data_out,l_base,l_date)
+plot(x=l_date1 , l_synth_data_out1,type="l",col="black",lty ="dotted", ylab= c("Stock price"), xlab = c("Date"), xaxt='n', ylim=c(3,20)) #, xlim=c(62,171)
+lines(x=l_date1, l_base1,col="black")
+abline(v=c(160, 182), col=c("green","red"))
+legend("topright",legend=c("Synthetic company", "Lu Thai", "Placebo", "Divestment publication"), lty=c("dotted","solid", "solid", "solid"), col= c("black", "black", "green", "red"), ncol=1)
+axis(side = 1, at = c(130, 180, 230 , 280, 330, 380), labels = c("07.07.17", "29.06.18","28.06.19","19.06.20", "26.03.21", "27.05.22"),)
+
+
+```
