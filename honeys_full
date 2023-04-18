@@ -1,0 +1,457 @@
+```{r}
+library(readxl)
+library(tidyverse)
+library(stringr)
+library(writexl)
+library(sqldf)
+
+```
+
+
+```{r}
+# Set the directory where your files are located
+setwd("/Users/karolineolsson/Desktop/cappy/files/honey/japanfinancialsummary")
+
+# Loop over all files in the directory
+for (filename in dir()) {
+  # Skip any files that aren't Excel files
+  if (!endsWith(filename, ".xlsx")) {
+    next
+  }
+
+  # Construct the file path using file.path()
+  file_path <- file.path(getwd(), filename)
+
+  # Extract the filename 
+  df_name <- gsub("\\.xlsx", "", filename)
+
+  # Read the data into a data frame with a unique name
+  assign(df_name, read_excel(file_path))
+
+}
+
+```
+
+
+```{r}
+
+newfile_all <- list(Aoki_newfile, Aoyama_newfile, Baroque_newfile, Beenos_newfile, Chiyoda_newfile, GFoot_newfile, Haruyama_newfile, Honeys_newfile, Konaka_newfile, Mac_newfile, MRK_newfile, Palemo_newfile, Right_newfile, Sacs_newfile, Tokyo_newfile, United_newfile, World_newfile)
+
+# Loop over the list of data frames and replace the column names
+newfile_all <- lapply(newfile_all, function(df) {
+  colnames(df) <- as.character(df[14, ])
+  df<- df[-c(2:9,14),] #just to take out some unnecessary rows
+  unique(df)
+  return(df)
+})
+
+newfile_all
+```
+
+```{r}
+
+#  through each data frame
+newfile_all <- lapply(newfile_all, function(df) {
+  # Apply the cleaning process to the 'Field Name' column
+  df$`Field Name` <- gsub("[ -&,():/]+", "_", df$`Field Name`)
+  df$`Field Name` <- gsub("_-_|__+|___+", "_", df$`Field Name`)
+  df$`Field Name` <- gsub("_$", "", df$`Field Name`)
+  
+  
+  # Remove duplicate rows from the data frame
+  df <- unique(df)
+#  rownames(df) <- df[,1] #assign rownames that we have cleaned 
+#  df <- df[,-1]
+  return(df)
+  
+})
+newfile_all
+```
+
+
+```{r}
+
+Aoki_newfile_modified <- newfile_all[[1]]
+Aoyama_newfile_modified <- newfile_all[[2]]
+Baroque_newfile_modified <- newfile_all[[3]]
+Beenos_newfile_modified <- newfile_all[[4]]
+Chiyoda_newfile_modified <- newfile_all[[5]]
+GFoot_newfile_modified <- newfile_all[[6]]
+Haruyama_newfile_modified <- newfile_all[[7]]
+Honeys_newfile_modified <- newfile_all[[8]]
+Konaka_newfile_modified <- newfile_all[[9]]
+Mac_newfile_modified <- newfile_all[[10]]
+MRK_newfile_modified <- newfile_all[[11]]
+Palemo_newfile_modified <- newfile_all[[12]]
+Right_newfile_modified <- newfile_all[[13]]
+Sacs_newfile_modified <- newfile_all[[14]]
+Tokyo_newfile_modified <- newfile_all[[15]]
+United_newfile_modified <- newfile_all[[16]]
+World_newfile_modified <- newfile_all[[17]]
+
+```
+
+
+```{r}
+#CHECK WHAT ROWNAMES EXIST IN ALL DATAFRAMES
+# Get intersection of row names
+cols <- lapply(newfile_all, function(df) df[,1])
+# Use Reduce with intersect to find the common values across all vectors
+common_values <- Reduce(intersect, cols)
+
+#newfiles :D 
+aokifile <- semi_join(x = Aoki_newfile_modified, y = common_values)
+aoyamafile <- semi_join(x = Aoyama_newfile_modified, y = common_values)
+baroquefile <- semi_join(x = Baroque_newfile_modified, y = common_values)
+beenosfile <- semi_join(x = Beenos_newfile_modified, y = common_values)
+chiyodafile <- semi_join(x = Chiyoda_newfile_modified, y = common_values)
+gfootfile <- semi_join(x = GFoot_newfile_modified, y = common_values)
+haruyamafile <- semi_join(x = Haruyama_newfile_modified, y = common_values)
+honeysfile <- semi_join(x = Honeys_newfile_modified, y = common_values) 
+konakafile <- semi_join(x = Konaka_newfile_modified, y = common_values) 
+macfile <- semi_join(x = Mac_newfile_modified, y = common_values) 
+mrkfile <- semi_join(x = MRK_newfile_modified, y = common_values) 
+palemofile <- semi_join(x = Palemo_newfile_modified, y = common_values) 
+rightfile <- semi_join(x = Right_newfile_modified, y = common_values) 
+sacsfile <- semi_join(x=Sacs_newfile_modified, y= common_values)
+tokyofile <- semi_join(x= Tokyo_newfile_modified, y=common_values)
+unitedfile <- semi_join(x= United_newfile_modified, y=common_values)
+worldfile <- semi_join(x= World_newfile_modified, y=common_values)
+
+```
+
+
+```{r}
+
+prepare_to_merge <- function(x) {
+  x <- t(x)
+  x <- as.data.frame(x)
+  colnames(x) <- as.character(x[1, ])
+  x <- x[-c(1,18:59),]
+  x$Period_End_Date<- as.Date(as.numeric(x$Period_End_Date), origin= "1899-12-30")
+  return(x)
+}
+honeys_q<- prepare_to_merge(honeysfile)
+honeys_all <- sqldf("
+      SELECT *
+      FROM honeys h
+      JOIN honeys_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+honeys_all<- honeys_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+honeys_all <- honeys_all %>% distinct(exchange_date, .keep_all = TRUE)
+honeys_all
+
+
+aoki_q<- prepare_to_merge(aokifile)
+aoki_all <- sqldf("
+      SELECT *
+      FROM aoki h
+      JOIN aoki_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+aoki_all<- aoki_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+aoki_all <- aoki_all %>% distinct(exchange_date, .keep_all = TRUE)
+aoki_all
+
+aoyama_q<- prepare_to_merge(aoyamafile)
+aoyama_all <- sqldf("
+      SELECT *
+      FROM aoyama h
+      JOIN aoyama_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+aoyama_all<- aoyama_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+aoyama_all <- aoyama_all %>% distinct(exchange_date, .keep_all = TRUE)
+aoyama_all
+
+baroque_q<- prepare_to_merge(baroquefile)
+baroque_all <- sqldf("
+      SELECT *
+      FROM baroque h
+      JOIN baroque_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+baroque_all<- baroque_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+baroque_all <- baroque_all %>% distinct(exchange_date, .keep_all = TRUE)
+baroque_all
+
+chiyoda_q<- prepare_to_merge(chiyodafile)
+chiyoda_all <- sqldf("
+      SELECT *
+      FROM chiyoda h
+      JOIN chiyoda_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+chiyoda_all<- chiyoda_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+chiyoda_all <- chiyoda_all %>% distinct(exchange_date, .keep_all = TRUE)
+chiyoda_all
+
+gfoot_q<- prepare_to_merge(gfootfile)
+gfoot_all <- sqldf("
+      SELECT *
+      FROM gfoot h
+      JOIN gfoot_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+gfoot_all<- gfoot_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+gfoot_all <- gfoot_all %>% distinct(exchange_date, .keep_all = TRUE)
+gfoot_all
+
+haruyama_q<- prepare_to_merge(haruyamafile)
+haruyama_all <- sqldf("
+      SELECT *
+      FROM haruyama h
+      JOIN haruyama_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+haruyama_all<- haruyama_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+haruyama_all <- haruyama_all %>% distinct(exchange_date, .keep_all = TRUE)
+haruyama_all
+
+konaka_q<- prepare_to_merge(konakafile)
+konaka_all <- sqldf("
+      SELECT *
+      FROM konaka h
+      JOIN konaka_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+konaka_all<- konaka_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+konaka_all <- konaka_all %>% distinct(exchange_date, .keep_all = TRUE)
+konaka_all
+
+mac_q<- prepare_to_merge(macfile)
+mac_all <- sqldf("
+      SELECT *
+      FROM mac h
+      JOIN mac_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+mac_all<- mac_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+mac_all <- mac_all %>% distinct(exchange_date, .keep_all = TRUE)
+mac_all
+
+mrk_q<- prepare_to_merge(mrkfile)
+mrk_all <- sqldf("
+      SELECT *
+      FROM mrk h
+      JOIN mrk_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+mrk_all<- mrk_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01") #Have a lot of NAs in working capital
+mrk_all <- mrk_all %>% distinct(exchange_date, .keep_all = TRUE)
+mrk_all
+
+palemo_q<- prepare_to_merge(palemofile)
+palemo_all <- sqldf("
+      SELECT *
+      FROM palemo h
+      JOIN palemo_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+palemo_all<- palemo_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+palemo_all <- palemo_all %>% distinct(exchange_date, .keep_all = TRUE)
+palemo_all
+
+right_q<- prepare_to_merge(rightfile)
+right_all <- sqldf("
+      SELECT *
+      FROM righton h
+      JOIN right_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+right_all<- right_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+right_all <- right_all %>% distinct(exchange_date, .keep_all = TRUE)
+right_all #MISSING REPORT
+
+
+sacs_q<- prepare_to_merge(sacsfile)
+sacs_all <- sqldf("
+      SELECT *
+      FROM sac h
+      JOIN sacs_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+sacs_all<- sacs_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+sacs_all <- sacs_all %>% distinct(exchange_date, .keep_all = TRUE)
+sacs_all
+
+tokyo_q<- prepare_to_merge(tokyofile)
+tokyo_all <- sqldf("
+      SELECT *
+      FROM tokyo h
+      JOIN tokyo_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+tokyo_all<- tokyo_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+tokyo_all <- tokyo_all %>% distinct(exchange_date, .keep_all = TRUE)
+tokyo_all #essentially MISSING ONE REPORT
+
+united_q<- prepare_to_merge(unitedfile)
+united_all <- sqldf("
+      SELECT *
+      FROM united h
+      JOIN united_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+united_all<- united_all %>% filter(exchange_date <= "2022-05-30"& exchange_date >= "2020-01-01")
+united_all <- united_all %>% distinct(exchange_date, .keep_all = TRUE)
+united_all
+
+world_q<- prepare_to_merge(worldfile)
+world_all <- sqldf("
+      SELECT *
+      FROM worldco h
+      JOIN world_q hq
+      ON hq.Period_End_Date - h.exchange_date BETWEEN 0 AND 95
+      ")
+
+world_all <- world_all %>% filter(exchange_date <= "2022-05-30" & exchange_date >= "2020-01-01" )
+world_all <- world_all %>% distinct(exchange_date, .keep_all = TRUE)
+
+world_all
+
+```
+
+```{r}
+honeys_fooo <- rbind(honeys_all, aoki_all, aoyama_all, baroque_all, chiyoda_all, gfoot_all, haruyama_all, konaka_all, mac_all, palemo_all, right_all,sacs_all, tokyo_all, united_all, world_all)
+honeys_fooo <- honeys_fooo %>% mutate_at(c('Revenue_from_Business_Activities_Total', 
+                             'Earnings_before_Interest_Taxes_Depreciation_Amortization_EBITDA',
+                             'Total_Assets',
+                             'Net_Margin',
+                             'EPS_Diluted_excluding_Extraordinary_Items_Applicable_to_Common_Total', 
+                             'Quick_Ratio',
+                             "Common_Shares_Outstanding_Total",
+                             "Working_Capital_to_Total_Assets",
+                             "Enterprise_Value",
+                             "Market_Capitalization",
+                             "Cash_Short_Term_Investments_Total",
+                             "Asset_Turnover_TTM",
+                             "Gross_Profit_Industrials_Property_Total", #ETTER HER_ MRK 
+                             "Pretax_ROA_TTM",
+                             "Inventory_Turnover_TTM", 
+                             "Average_Payables_Payment_Days_TTM",
+                             "Return_on_Average_Total_Assets_Income_before_Discontinued_Operations_Extraordinary_Items_TTM",
+                             "Accounts_Receivable_Turnover_TTM",
+                             "Payables_Turnover_TTM" ,#overflødig? 
+                             "Average_Net_Trade_Cycle_Days_TTM",
+                             "Dividend_Yield_Common_Stock_Net_Issue_Specific_TTM",
+                            "Gross_Profit_Margin",
+                            'Current_Ratio', 'Pretax_ROE_TTM'
+                             ), as.numeric) 
+
+```
+
+
+```{r}
+
+h_dataprep.out <- dataprep(
+  foo = honeys_fooo,
+  predictors =c('Volume',
+                             'Quick_Ratio',
+                             "Working_Capital_to_Total_Assets",
+                             "Enterprise_Value",
+                             "Market_Capitalization",
+                             "Asset_Turnover_TTM",
+                             "Pretax_ROA_TTM",
+                             "Inventory_Turnover_TTM", 
+                             "Average_Payables_Payment_Days_TTM",
+                             "Dividend_Yield_Common_Stock_Net_Issue_Specific_TTM"), 
+  special.predictors = list(list("monthly_rolling_mean", 62:119, "mean")), 
+  dependent = "monthly_rolling_mean",
+  unit.variable = "stockno",
+  unit.names.variable = "unit_ticker",
+  time.variable = "weeknumber",
+  treatment.identifier = 1,
+  controls.identifier = c(3, 5, 7,9,10,12,13,14,16), # 11 MRK missing too much data,15 tokyo unbalanced
+  time.predictors.prior = 62:119, #67 one year pre divestment+ 5 weeks = 62. 119 divestment
+  time.optimize.ssr = 62:119, 
+  time.plot = c(62:171), #171 about one year post divestment
+  )
+
+h_synth.out<- synth(h_dataprep.out, optimxmethod = 'All')
+
+
+```
+
+```{r}
+h_synth_data_out = h_dataprep.out$Y0plot%*%h_synth.out$solution.w
+h_base = h_dataprep.out$Y1plot
+h_date = 62:171
+hh<- data.frame(h_synth_data_out,h_base,h_date)
+plot(x=h_date , h_synth_data_out,type="l",col="black",lty ="dotted", ylab= c("Stock price"), xlab = c("Date"), xaxt='n', ylim=c(700,1500), xlim=c(62,171))
+lines(x=h_date, h_base,col="black")
+abline(v=c(94,119), col=c("blue","red"))
+legend("topleft",legend=c("Synthetic company", "Honeys", "Ethic recommendation", "Divestment publication"), lty=c("dotted","solid", "solid", "solid"), col= c("black", "black", "blue", "red"), ncol=1)
+axis(side = 1, at = c(62, 80, 98 , 116, 134, 152,170), labels = c("17.04.20", "21.08.20","25.12.20","30.04.31", "03.09.21", "07.01.22", "13.05.22"),)
+
+
+
+h_synth.out$solution.w
+#original pathplot
+path.plot(synth.res = h_synth.out,
+          dataprep.res = h_dataprep.out,
+          Ylab= c("stock price"),
+          Xlab = c("weeks since the 1st of January 2019"),
+          Legend= c("Honeys", "Synthetic company"),
+          abline(v=c(94, 119), col=c("blue", "red"))) #94 decision is given #119 publication date (treatment)
+
+str(h_synth.out$solution.v)
+
+gaps.plot(synth.res = h_synth.out,
+          dataprep.res = h_dataprep.out,
+          Ylab= c("stock price"),
+          Xlab = c("weeks since 01.01.2019"),
+          abline(v=c(94, 119), col=c("blue", "red")),
+          Main = NA)
+
+synth.tables <- synth.tab(
+  dataprep.res = h_dataprep.out,
+  synth.res = h_synth.out
+); synth.tables
+
+```
+
+
+
+```{r}
+#PLACEBO IN TIME
+h_dataprep.out1 <- dataprep(
+  foo = honeys_fooo,
+  predictors =c('Volume',
+                             'Quick_Ratio',
+                             "Working_Capital_to_Total_Assets",
+                             "Enterprise_Value",
+                             "Market_Capitalization",
+                             "Asset_Turnover_TTM",
+                             "Pretax_ROA_TTM",
+                             "Inventory_Turnover_TTM", 
+                             "Average_Payables_Payment_Days_TTM",
+                             "Dividend_Yield_Common_Stock_Net_Issue_Specific_TTM"), 
+
+  special.predictors = list(list("monthly_rolling_mean", 62:119, "mean")), 
+  dependent = "monthly_rolling_mean",
+  unit.variable = "stockno",
+  unit.names.variable = "unit_ticker",
+  time.variable = "weeknumber",
+  treatment.identifier = 1,
+  controls.identifier = c(3, 5, 7,9,10,12,13,14,16), # 11 MRK missing too much data,15 tokyo unbalanced
+  time.predictors.prior = 62:100, #67 one year pre divestment+ 5 weeks = 62. 119 divestment
+  time.optimize.ssr = 62:100, 
+  time.plot = c(62:171), #171 about one year post divestment
+  )
+
+h_synth.out1<- synth(h_dataprep.out1, optimxmethod = 'All')
+
+h_synth_data_out1 = h_dataprep.out1$Y0plot%*%h_synth.out1$solution.w
+h_base1 = h_dataprep.out1$Y1plot
+h_date1 = 62:171
+hh<- data.frame(h_synth_data_out1,h_base1,h_date1)
+plot(x=h_date1 , h_synth_data_out1,type="l",col="black",lty ="dotted", ylab= c("Stock price"), xlab = c("Date"), xaxt='n', ylim=c(700,1500), xlim=c(62,171))
+lines(x=h_date1, h_base,col="black")
+abline(v=c(100,119), col=c("green","red"))
+legend("topleft",legend=c("Synthetic company", "Honeys", "Placebo", "Divestment publication"), lty=c("dotted","solid", "solid", "solid"), col= c("black", "black", "green", "red"), ncol=1)
+axis(side = 1, at = c(62, 80, 98 , 116, 134, 152,170), labels = c("17.04.20", "21.08.20","25.12.20","30.04.31", "03.09.21", "07.01.22", "13.05.22"),)
+
+
+```
